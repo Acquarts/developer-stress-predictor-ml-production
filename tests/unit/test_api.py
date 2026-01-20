@@ -154,9 +154,7 @@ class TestBatchPredictEndpoint:
 class TestModelEndpoints:
     """Tests for model information endpoints."""
 
-    def test_model_info(
-        self, test_client: TestClient, auth_headers: dict[str, str]
-    ) -> None:
+    def test_model_info(self, test_client: TestClient, auth_headers: dict[str, str]) -> None:
         """Test model info endpoint."""
         response = test_client.get("/model/info", headers=auth_headers)
 

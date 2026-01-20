@@ -18,9 +18,7 @@ class PredictionInput(BaseModel):
     Experience_Years: Literal["Junior", "Mid", "Senior"] = Field(
         ..., description="Experience level"
     )
-    Code_Complexity: Literal["Low", "Medium", "High"] = Field(
-        ..., description="Code complexity"
-    )
+    Code_Complexity: Literal["Low", "Medium", "High"] = Field(..., description="Code complexity")
     Remote_Work: Literal["Yes", "No"] = Field(..., description="Remote work status")
 
     model_config = {

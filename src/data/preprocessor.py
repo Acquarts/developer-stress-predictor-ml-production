@@ -133,9 +133,7 @@ class DataPreprocessor:
         df_encoded = df.copy()
 
         if "Experience_Years" in df_encoded.columns:
-            df_encoded["Experience_Years"] = df_encoded["Experience_Years"].map(
-                self.experience_map
-            )
+            df_encoded["Experience_Years"] = df_encoded["Experience_Years"].map(self.experience_map)
 
         if "Code_Complexity" in df_encoded.columns:
             df_encoded["Code_Complexity"] = df_encoded["Code_Complexity"].map(self.complexity_map)

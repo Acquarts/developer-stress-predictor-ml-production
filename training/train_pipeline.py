@@ -53,9 +53,7 @@ def main() -> None:
     trainer = ModelTrainer()
 
     print(f"\nPreparing data (test_size={args.test_size})...")
-    X_train, X_test, y_train, y_test = trainer.prepare_data(
-        df, test_size=args.test_size
-    )
+    X_train, X_test, y_train, y_test = trainer.prepare_data(df, test_size=args.test_size)
     print(f"Training set: {len(X_train)} samples")
     print(f"Test set: {len(X_test)} samples")
 

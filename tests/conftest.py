@@ -121,6 +121,7 @@ def trained_model_path(request: pytest.FixtureRequest) -> Generator[Path, None, 
     yield model_path
 
     import shutil
+
     shutil.rmtree(tmpdir, ignore_errors=True)
 
 
