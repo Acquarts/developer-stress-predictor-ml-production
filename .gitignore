@@ -87,7 +87,7 @@ dmypy.json
 Thumbs.db
 
 # Project specific
-models/*.joblib
+!models/stress_model.joblib
 models/*.pkl
 !models/.gitkeep
 *.log
