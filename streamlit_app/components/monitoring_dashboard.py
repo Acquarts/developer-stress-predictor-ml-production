@@ -4,7 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-from streamlit_app.utils import check_api_health, get_feature_importance, get_model_info
+from utils import check_api_health, get_feature_importance, get_model_info
 
 
 def render_monitoring_dashboard() -> None:

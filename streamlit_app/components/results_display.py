@@ -5,7 +5,7 @@ from typing import Any
 import plotly.graph_objects as go
 import streamlit as st
 
-from streamlit_app.utils import get_stress_color, get_stress_description
+from utils import get_stress_color, get_stress_description
 
 
 def render_results(prediction: dict[str, Any]) -> None:
