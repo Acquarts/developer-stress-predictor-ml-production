@@ -1,13 +1,19 @@
 """Main Streamlit application for Developer Stress Prediction."""
 
+import sys
+from pathlib import Path
+
+# Add streamlit_app to path for imports when running as script
+sys.path.insert(0, str(Path(__file__).parent))
+
 import streamlit as st
 
-from streamlit_app.components import (
+from components import (
     render_monitoring_dashboard,
     render_prediction_form,
     render_results,
 )
-from streamlit_app.utils import check_api_health, predict_stress
+from utils import check_api_health, predict_stress
 
 st.set_page_config(
     page_title="Developer Stress Predictor",
