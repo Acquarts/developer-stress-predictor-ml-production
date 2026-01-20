@@ -130,16 +130,24 @@ def test_client(trained_model_path: Path) -> Generator[TestClient, None, None]:
     """FastAPI test client with trained model."""
     os.environ["MODEL_PATH"] = str(trained_model_path)
 
+    # Clear cache before importing to ensure fresh predictor with correct path
     from src.api.dependencies import get_predictor
 
     get_predictor.cache_clear()
 
+    # Clear settings cache as well
+    from src.config import get_settings
+
+    get_settings.cache_clear()
+
+    # Import app after setting environment and clearing caches
     from src.api.main import app
 
     with TestClient(app) as client:
         yield client
 
     get_predictor.cache_clear()
+    get_settings.cache_clear()
 
 
 @pytest.fixture
