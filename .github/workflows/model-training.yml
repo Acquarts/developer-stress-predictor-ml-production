@@ -1,0 +1,143 @@
+name: Model Training
+
+on:
+  workflow_dispatch:
+    inputs:
+      trigger_deploy:
+        description: 'Deploy model after training if metrics improve'
+        required: true
+        default: 'true'
+        type: boolean
+  schedule:
+    # Run weekly on Sundays at midnight
+    - cron: '0 0 * * 0'
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: us-central1
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  train:
+    name: Train Model
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+
+    outputs:
+      model_improved: ${{ steps.evaluate.outputs.improved }}
+      test_r2: ${{ steps.evaluate.outputs.test_r2 }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[training]"
+
+      - name: Train model
+        id: train
+        run: |
+          python training/train_pipeline.py \
+            --data-path data/developer_stress.csv \
+            --output-path models/stress_model.joblib \
+            --metrics-path models/metrics.json
+
+      - name: Evaluate model
+        id: evaluate
+        run: |
+          python -c "
+          import json
+          with open('models/metrics.json') as f:
+              metrics = json.load(f)
+
+          test_r2 = metrics['test_r2']
+          print(f'Test R2: {test_r2}')
+
+          # Check if model improved (threshold: R2 > 0.85)
+          improved = test_r2 > 0.85
+          print(f'Model improved: {improved}')
+
+          with open('$GITHUB_OUTPUT', 'a') as f:
+              f.write(f'test_r2={test_r2}\n')
+              f.write(f'improved={str(improved).lower()}\n')
+          "
+
+      - name: Upload model artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: trained-model
+          path: |
+            models/stress_model.joblib
+            models/metrics.json
+
+      - name: Commit model to repository
+        if: steps.evaluate.outputs.improved == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add models/stress_model.joblib models/metrics.json
+          git commit -m "Update trained model (R2: ${{ steps.evaluate.outputs.test_r2 }})" || echo "No changes to commit"
+          git push
+
+  deploy:
+    name: Deploy Updated Model
+    needs: train
+    if: needs.train.outputs.model_improved == 'true' && github.event.inputs.trigger_deploy == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download model artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: trained-model
+          path: models/
+
+      - name: Google Auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Upload model to GCS
+        run: |
+          gsutil cp models/stress_model.joblib gs://${{ env.PROJECT_ID }}-models/stress_model.joblib
+          gsutil cp models/metrics.json gs://${{ env.PROJECT_ID }}-models/metrics.json
+
+      - name: Trigger deployment
+        run: |
+          gcloud run services update stress-api \
+            --region ${{ env.REGION }} \
+            --update-env-vars MODEL_VERSION=${{ github.sha }}
+
+  notify:
+    name: Notify Results
+    needs: [train, deploy]
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Training Summary
+        run: |
+          echo "## Model Training Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Test R² | ${{ needs.train.outputs.test_r2 }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Improved | ${{ needs.train.outputs.model_improved }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Deploy Triggered | ${{ needs.deploy.result == 'success' }} |" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,40 @@
+# Vertex AI Training Configuration
+# Use with: gcloud ai custom-jobs create --config=vertex_config.yaml
+
+displayName: stress-model-training
+
+workerPoolSpecs:
+  - machineSpec:
+      machineType: n1-standard-4
+    replicaCount: 1
+    pythonPackageSpec:
+      executorImageUri: us-docker.pkg.dev/vertex-ai/training/scikit-learn-cpu.1-0:latest
+      packageUris:
+        - gs://${PROJECT_ID}-training/packages/developer-stress-prediction.tar.gz
+      pythonModule: training.train_pipeline
+      args:
+        - --data-path=gs://${PROJECT_ID}-data/developer_stress.csv
+        - --output-path=gs://${PROJECT_ID}-models/stress_model.joblib
+        - --metrics-path=gs://${PROJECT_ID}-models/metrics.json
+
+baseOutputDirectory:
+  outputUriPrefix: gs://${PROJECT_ID}-training/output
+
+# Environment variables
+env:
+  - name: LOG_LEVEL
+    value: INFO
+
+# Labels for organization
+labels:
+  project: developer-stress
+  environment: production
+  team: ml
+
+# Scheduling
+scheduling:
+  timeout: 3600s  # 1 hour max
+  restartJobOnWorkerRestart: false
+
+# Service account (optional)
+# serviceAccount: training-sa@${PROJECT_ID}.iam.gserviceaccount.com

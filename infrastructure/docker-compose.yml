@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: infrastructure/Dockerfile
+    container_name: stress-api
+    ports:
+      - "8000:8000"
+    environment:
+      - API_KEY=${API_KEY:-dev-api-key}
+      - MODEL_PATH=models/stress_model.joblib
+      - LOG_LEVEL=INFO
+      - LOG_FORMAT=json
+    volumes:
+      - ../models:/app/models:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - stress-network
+
+  streamlit:
+    build:
+      context: ..
+      dockerfile: infrastructure/Dockerfile.streamlit
+    container_name: stress-streamlit
+    ports:
+      - "8501:8501"
+    environment:
+      - STREAMLIT_API_URL=http://api:8000
+      - API_KEY=${API_KEY:-dev-api-key}
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - stress-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: stress-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    networks:
+      - stress-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: stress-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - stress-network
+
+networks:
+  stress-network:
+    driver: bridge
+
+volumes:
+  prometheus-data:
+  grafana-data:

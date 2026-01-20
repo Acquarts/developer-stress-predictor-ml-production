@@ -1,0 +1,112 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: us-central1
+  REPOSITORY: stress-prediction
+
+jobs:
+  deploy:
+    name: Deploy to Cloud Run
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Google Auth
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: infrastructure/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/stress-api:${{ github.sha }}
+            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/stress-api:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push Streamlit image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: infrastructure/Dockerfile.streamlit
+          push: true
+          tags: |
+            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/stress-streamlit:${{ github.sha }}
+            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/stress-streamlit:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy API to Cloud Run
+        id: deploy-api
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: stress-api
+          region: ${{ env.REGION }}
+          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/stress-api:${{ github.sha }}
+          flags: |
+            --allow-unauthenticated
+            --memory=512Mi
+            --cpu=1
+            --min-instances=0
+            --max-instances=10
+            --concurrency=80
+          secrets: |
+            API_KEY=stress-api-key:latest
+          env_vars: |
+            MODEL_PATH=models/stress_model.joblib
+            LOG_LEVEL=INFO
+            LOG_FORMAT=json
+
+      - name: Deploy Streamlit to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: stress-streamlit
+          region: ${{ env.REGION }}
+          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/stress-streamlit:${{ github.sha }}
+          flags: |
+            --allow-unauthenticated
+            --memory=512Mi
+            --cpu=1
+            --min-instances=0
+            --max-instances=5
+          secrets: |
+            API_KEY=stress-api-key:latest
+          env_vars: |
+            STREAMLIT_API_URL=${{ steps.deploy-api.outputs.url }}
+
+      - name: Smoke test API
+        run: |
+          sleep 10
+          curl -f "${{ steps.deploy-api.outputs.url }}/health" || exit 1
+
+      - name: Output URLs
+        run: |
+          echo "API URL: ${{ steps.deploy-api.outputs.url }}"
+          echo "::notice title=API Deployed::${{ steps.deploy-api.outputs.url }}"
