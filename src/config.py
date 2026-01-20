@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     # API Configuration
     api_key: str = "dev-api-key"
-    api_host: str = "0.0.0.0"
+    api_host: str = "0.0.0.0"  # nosec B104 - Required for Docker containers
     api_port: int = 8000
 
     # Model Configuration

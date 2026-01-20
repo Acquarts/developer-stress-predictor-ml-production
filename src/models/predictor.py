@@ -102,7 +102,7 @@ class StressPredictor:
         self.ensure_loaded()
 
         predictions = self.model.predict(features)  # type: ignore
-        return np.clip(predictions, 0.0, 100.0)
+        return np.clip(predictions, 0.0, 100.0)  # type: ignore[no-any-return]
 
     def get_feature_importance(self) -> dict[str, float]:
         """Get feature importance from the model.
@@ -115,7 +115,7 @@ class StressPredictor:
         importances = self.model.feature_importances_  # type: ignore
         return dict(
             sorted(
-                zip(self.feature_columns, importances.tolist()),
+                zip(self.feature_columns, importances.tolist(), strict=True),
                 key=lambda x: x[1],
                 reverse=True,
             )

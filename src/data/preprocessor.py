@@ -47,26 +47,23 @@ class DataPreprocessor:
                         f"{feature} value {value} is outside typical range [{min_val}, {max_val}]"
                     )
 
-        if "Experience_Years" in data:
-            if data["Experience_Years"] not in self.experience_map:
-                warnings.append(
-                    f"Invalid Experience_Years: {data['Experience_Years']}. "
-                    f"Expected one of {list(self.experience_map.keys())}"
-                )
+        if "Experience_Years" in data and data["Experience_Years"] not in self.experience_map:
+            warnings.append(
+                f"Invalid Experience_Years: {data['Experience_Years']}. "
+                f"Expected one of {list(self.experience_map.keys())}"
+            )
 
-        if "Code_Complexity" in data:
-            if data["Code_Complexity"] not in self.complexity_map:
-                warnings.append(
-                    f"Invalid Code_Complexity: {data['Code_Complexity']}. "
-                    f"Expected one of {list(self.complexity_map.keys())}"
-                )
+        if "Code_Complexity" in data and data["Code_Complexity"] not in self.complexity_map:
+            warnings.append(
+                f"Invalid Code_Complexity: {data['Code_Complexity']}. "
+                f"Expected one of {list(self.complexity_map.keys())}"
+            )
 
-        if "Remote_Work" in data:
-            if data["Remote_Work"] not in self.remote_map:
-                warnings.append(
-                    f"Invalid Remote_Work: {data['Remote_Work']}. "
-                    f"Expected one of {list(self.remote_map.keys())}"
-                )
+        if "Remote_Work" in data and data["Remote_Work"] not in self.remote_map:
+            warnings.append(
+                f"Invalid Remote_Work: {data['Remote_Work']}. "
+                f"Expected one of {list(self.remote_map.keys())}"
+            )
 
         return warnings
 

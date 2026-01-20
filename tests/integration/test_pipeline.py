@@ -5,7 +5,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import pytest
 
 from src.data.loader import load_data
 from src.data.preprocessor import DataPreprocessor
@@ -120,8 +119,8 @@ class TestDataPipeline:
             for _, row in df.iterrows():
                 input_data = row.drop("Stress_Level").to_dict()
 
-                warnings = preprocessor.validate_input(input_data)
-                encoded = preprocessor.encode_categorical(input_data)
+                preprocessor.validate_input(input_data)
+                preprocessor.encode_categorical(input_data)
                 features = preprocessor.transform_single(input_data)
 
                 assert features.shape == (1, 10)

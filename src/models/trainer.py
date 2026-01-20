@@ -53,7 +53,7 @@ class ModelTrainer:
         X = df_encoded[self.feature_columns].values
         y = df_encoded[target_col].values
 
-        return train_test_split(X, y, test_size=test_size, random_state=42)
+        return train_test_split(X, y, test_size=test_size, random_state=42)  # type: ignore[no-any-return]
 
     def train(
         self, X_train: NDArray[np.float64], y_train: NDArray[np.float64]
@@ -140,7 +140,7 @@ class ModelTrainer:
             raise ValueError("Model not trained. Call train() first.")
 
         importances = self.model.feature_importances_
-        return dict(zip(self.feature_columns, importances.tolist()))
+        return dict(zip(self.feature_columns, importances.tolist(), strict=True))
 
     def save_model(self, path: str | Path) -> None:
         """Save trained model to disk.

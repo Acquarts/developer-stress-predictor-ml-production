@@ -1,8 +1,8 @@
 """FastAPI application for developer stress prediction."""
 
 import time
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -28,7 +28,7 @@ metrics = MetricsCollector()
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan handler."""
     setup_logging()
     logger.info("starting_application", version=__version__)
@@ -73,7 +73,7 @@ app.add_middleware(
 
 
 @app.middleware("http")
-async def log_requests(request: Request, call_next):
+async def log_requests(request: Request, call_next):  # type: ignore[no-untyped-def]
     """Log all requests and record metrics."""
     start_time = time.time()
 
