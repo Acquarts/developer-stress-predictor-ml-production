@@ -87,47 +87,9 @@ jobs:
           git commit -m "Update trained model (R2: ${{ steps.evaluate.outputs.test_r2 }})" || echo "No changes to commit"
           git push
 
-  deploy:
-    name: Deploy Updated Model
-    needs: train
-    if: needs.train.outputs.model_improved == 'true' && github.event.inputs.trigger_deploy == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download model artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: trained-model
-          path: models/
-
-      - name: Google Auth
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: Upload model to GCS
-        run: |
-          gsutil cp models/stress_model.joblib gs://${{ env.PROJECT_ID }}-models/stress_model.joblib
-          gsutil cp models/metrics.json gs://${{ env.PROJECT_ID }}-models/metrics.json
-
-      - name: Trigger deployment
-        run: |
-          gcloud run services update stress-api \
-            --region ${{ env.REGION }} \
-            --update-env-vars MODEL_VERSION=${{ github.sha }}
-
   notify:
     name: Notify Results
-    needs: [train, deploy]
+    needs: train
     if: always()
     runs-on: ubuntu-latest
 
@@ -140,4 +102,5 @@ jobs:
           echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| Test R² | ${{ needs.train.outputs.test_r2 }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Improved | ${{ needs.train.outputs.model_improved }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Deploy Triggered | ${{ needs.deploy.result == 'success' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "If model improved, CI/CD pipeline is triggered automatically via commit." >> $GITHUB_STEP_SUMMARY
