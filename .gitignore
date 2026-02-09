@@ -102,4 +102,5 @@ logs/
 # GCP
 *.json
 !infrastructure/*.json
+!models/metrics.json
 service-account-key.json
